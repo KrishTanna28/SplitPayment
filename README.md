@@ -1,276 +1,157 @@
-# Split Payment App – Backend
+# Split Payment App – Group Expense & Settlement Platform
 
-A Node.js/Express backend for managing group expenses, splitting payments, and enforcing group budgets. This API powers the Split Payment App, allowing users to track shared expenses, upload receipts, and receive notifications.
-
----
-
-## Table of Contents
-
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Setup & Installation](#setup--installation)
-- [Environment Variables](#environment-variables)
-- [Database Setup](#database-setup)
-- [Running the Server](#running-the-server)
-- [API Endpoints](#api-endpoints)
-- [Testing](#testing)
-- [Error Handling](#error-handling)
-- [Security](#security)
-- [Contributing](#contributing)
-- [License](#license)
-- [Contact](#contact)
+A full-featured backend API built with **Node.js**, **Express**, and **PostgreSQL** for managing shared group expenses, calculating balances, optimizing settlements, and generating reports.
 
 ---
 
-## Features
+## 📅 Features
 
-- **User and Group Management:** Create users and groups, add/remove members.
-- **Expense Tracking:** Add, view, and filter expenses by group, category, or date.
-- **Expense Splitting:** Automatically split expenses among group members.
-- **Receipt Uploads:** Attach image receipts to expenses.
-- **Budget Enforcement:** Set monthly group budgets and block or warn on overspending.
-- **Webhook Notifications:** Trigger webhooks on key events (e.g., expense created).
-- **RESTful API:** Well-structured endpoints for easy integration.
+### ✅ Core Modules
+
+* **User Auth**: JWT login/register, password hashing with bcrypt
+* **Groups**: Create groups, add/remove members, assign roles (Admin, Member, Viewer)
+* **Expenses**:
+
+  * Add expenses (equal/unequal splits, exact amounts)
+  * Receipt upload (Multer)
+  * Comments + Emoji reactions
+  * Expense locking after 7 days
+* **Balances**:
+
+  * Real-time net balances
+  * Smart debt optimization (like Splitwise)
+* **Settlements**:
+
+  * Manual payments
+  * UPI link and QR code generation
+  * Recurring contribution scheduler (cron-based)
+* **Reports**:
+
+  * Monthly summary & top contributors
+  * Budget limit alerts
+  * Export to CSV / PDF
+* **Notifications**:
+
+  * Console/email reminders for dues
+  * Webhook and push-style alerts (demo only)
 
 ---
 
-## Tech Stack
+## 🌐 Tech Stack
 
-- **Node.js** (runtime)
-- **Express.js** (web framework)
-- **PostgreSQL** (database)
-- **pg** (PostgreSQL client)
-- **Multer** (file uploads)
-- **dotenv** (environment variables)
-- **Jest** (testing, if configured)
+* **Backend**: Node.js, Express.js
+* **Database**: PostgreSQL
+* **Auth**: JWT, bcrypt
+* **Uploads**: Multer
+* **Email**: Nodemailer
+* **PDF/CSV**: pdfkit, json2csv
+* **Scheduler**: node-cron
 
 ---
 
-## Project Structure
+## 🚀 Getting Started
 
-```
-split-payment-backend/
-├── config/           # Database and app configuration
-├── controllers/      # Route handler logic
-├── models/           # Database models and queries
-├── routes/           # Express route definitions
-├── utils/            # Utility functions (e.g., webhook triggers)
-├── uploads/          # Uploaded receipt images (gitignored)
-├── .env              # Environment variables (gitignored)
-├── .gitignore
-├── package.json
-├── README.md
+### 1. Clone the Repo
+
+```bash
+git clone https://github.com/your-username/split-payment-backend.git
+cd split-payment-backend
 ```
 
----
+### 2. Install Dependencies
 
-## Setup & Installation
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/)
-- [npm](https://www.npmjs.com/)
-- [PostgreSQL](https://www.postgresql.org/)
-- [Git](https://git-scm.com/)
-
-### Installation Steps
-
-1. **Clone the repository**
-   ```sh
-   git clone https://github.com/your-username/split-payment-app.git
-   cd split-payment-app/split-payment-backend
-   ```
-
-2. **Install dependencies**
-   ```sh
-   npm install
-   ```
-
-3. **Configure environment variables**  
-   See [Environment Variables](#environment-variables).
-
-4. **Set up the database**  
-   See [Database Setup](#database-setup).
-
----
-
-## Environment Variables
-
-Create a `.env` file in the root of `split-payment-backend`:
-
+```bash
+npm install
 ```
-DATABASE_URL=postgres://username:password@localhost:5432/your_db
+
+### 3. Setup Environment Variables
+
+Create `.env` file:
+
+```env
 PORT=5000
-WEBHOOK_URL=https://your-webhook-url.com
+DB_NAME=splitpaydb
+DB_USER=youruser
+DB_PASSWORD=yourpass
+DB_HOST=localhost
+JWT_SECRET=your_jwt_secret
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_app_password
 ```
 
-- `DATABASE_URL`: PostgreSQL connection string.
-- `PORT`: Port for the Express server.
-- `WEBHOOK_URL`: (Optional) URL to send webhook notifications.
+### 4. Run the App
 
----
-
-## Database Setup
-
-1. **Create a PostgreSQL database**  
-   Example:
-   ```sql
-   CREATE DATABASE split_payment_db;
-   ```
-
-2. **Create tables**  
-   Example schema (simplified):
-
-   ```sql
-   CREATE TABLE users (
-     id SERIAL PRIMARY KEY,
-     name VARCHAR(100) NOT NULL,
-     email VARCHAR(100) UNIQUE NOT NULL
-   );
-
-   CREATE TABLE groups (
-     id SERIAL PRIMARY KEY,
-     name VARCHAR(100) NOT NULL
-   );
-
-   CREATE TABLE group_members (
-     group_id INT REFERENCES groups(id),
-     user_id INT REFERENCES users(id),
-     PRIMARY KEY (group_id, user_id)
-   );
-
-   CREATE TABLE expenses (
-     id SERIAL PRIMARY KEY,
-     group_id INT REFERENCES groups(id),
-     paid_by INT REFERENCES users(id),
-     amount NUMERIC(10,2) NOT NULL,
-     category VARCHAR(50),
-     description TEXT,
-     receipt_url VARCHAR(255),
-     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-   );
-
-   CREATE TABLE expense_shares (
-     expense_id INT REFERENCES expenses(id),
-     user_id INT REFERENCES users(id),
-     amount NUMERIC(10,2) NOT NULL,
-     PRIMARY KEY (expense_id, user_id)
-   );
-
-   CREATE TABLE group_budgets (
-     id SERIAL PRIMARY KEY,
-     group_id INT REFERENCES groups(id),
-     monthly_limit NUMERIC(10,2) NOT NULL,
-     active BOOLEAN DEFAULT TRUE
-   );
-   ```
-
-   *(Adjust as per your actual schema.)*
-
----
-
-## Running the Server
-
-```sh
-npm start
-```
-Server runs at `http://localhost:5000` by default.
-
----
-
-## API Endpoints
-
-### Groups
-
-- `POST /groups`  
-  Create a new group.
-
-- `GET /groups/:groupId`  
-  Get group details.
-
-- `POST /groups/:groupId/budget`  
-  Set or update a group’s monthly budget.
-
-### Users
-
-- `POST /users`  
-  Create a new user.
-
-- `POST /groups/:groupId/members`  
-  Add a user to a group.
-
-### Expenses
-
-- `POST /expenses`  
-  Add a new expense (supports file upload for receipts).
-
-  **Request Example:**
-  ```json
-  {
-    "groupId": 1,
-    "paidBy": 2,
-    "amount": 500,
-    "category": "Food",
-    "description": "Dinner at restaurant",
-    "splits": [
-      { "userId": 2, "amount": 250 },
-      { "userId": 3, "amount": 250 }
-    ]
-  }
-  ```
-
-- `GET /groups/:groupId/expenses`  
-  Get all expenses for a group (supports filters).
-
-### Webhooks
-
-- Webhook is triggered on expense creation (see `utils/webhook.js`).
-
----
-
-## Testing
-
-If tests are configured (e.g., with Jest):
-
-```sh
-npm test
+```bash
+npm run dev
 ```
 
 ---
 
-## Error Handling
+## 📒 API Endpoints
 
-- All endpoints return appropriate HTTP status codes.
-- Errors are logged and returned in JSON format.
+### ✨ Auth
+
+* `POST /api/auth/register`  → Register new user
+* `POST /api/auth/login`     → Login user
+
+### 🪢 Groups
+
+* `POST /api/groups/create`  → Create group
+* `POST /api/groups/add-member` → Add member
+* `GET /api/groups/my-groups`   → View my groups
+* `GET /api/groups/:groupId/members`
+
+### 📅 Expenses
+
+* `POST /api/expenses/add` (Form-data with receipt + JSON)
+* `GET /api/expenses/:groupId`
+* `POST /api/expenses/:expenseId/comment`
+* `GET /api/expenses/:expenseId/comments`
+
+### ♻️ Balances
+
+* `GET /api/balances/:groupId`
+
+### 💳 Settlements
+
+* `POST /api/settlements/add`
+* `GET /api/settlements/:groupId`
+* `GET /api/settlements/upi-link`
+* `GET /api/settlements/upi-qr`
+* `POST /api/settlements/recurring`
+
+### 📊 Reports
+
+* `GET /api/reports/summary?groupId=1&month=6&year=2025`
+* `GET /api/reports/export/:groupId/csv`
+* `GET /api/reports/export/:groupId/pdf`
 
 ---
 
-## Security
+## 📄 Testing With Postman
 
-- **Secrets:** `.env` and sensitive files are excluded via `.gitignore`.
-- **Validation:** Input is validated in controllers.
-- **Uploads:** Only image files are allowed for receipts.
-- **Do not commit secrets or node_modules.**
+1. Use `/api/auth/login` to get a JWT token
+2. Use `Bearer Token` auth in Postman for secured routes
+3. Upload receipts using form-data:
 
----
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/YourFeature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin feature/YourFeature`)
-5. Create a new Pull Request
+   * Key: `receipt` (file)
+   * Key: `data` (text, JSON string)
 
 ---
 
-## License
+## 📅 Scheduler
+
+* **Auto monthly contributions**: via `node-cron`
+* **Daily due reminders**: email or console alerts at 8AM
+
+---
+
+## 📃 License
 
 MIT
 
 ---
 
-## Contact
+## ✨ Author
 
-For questions or support, open an issue or
+https://github.com/KrishTanna28
