@@ -83,9 +83,7 @@ split-payment-backend/
    EMAIL_PASS=your_gmail_app_password
    ```
 
-4. **Run database migrations** (if any).
-
-5. **Start the server:**
+4. **Start the server:**
    ```bash
    npm run dev
    ```
